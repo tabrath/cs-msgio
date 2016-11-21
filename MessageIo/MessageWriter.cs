@@ -159,6 +159,9 @@ namespace MessageIo
             }
         }
 
+        public virtual void Flush() => _stream?.Flush();
+        public virtual Task FlushAsync(CancellationToken cancellationToken) => _stream?.FlushAsync(cancellationToken);
+
         ~MessageWriter()
         {
             Dispose(false);

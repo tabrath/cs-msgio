@@ -33,8 +33,8 @@ namespace MessageIo
 
         public static MessageStream Combine(MessageReader reader, MessageWriter writer) => new MessageStream(reader, writer);
 
-        public override void Flush() => _stream?.Flush();
-        public override Task FlushAsync(CancellationToken cancellationToken) => _stream?.FlushAsync(cancellationToken);
+        public override void Flush() => _writer?.Flush();
+        public override Task FlushAsync(CancellationToken cancellationToken) => _writer.FlushAsync(cancellationToken);
         public override long Seek(long offset, SeekOrigin origin) => _stream?.Seek(offset, origin) ?? -1;
         public override void SetLength(long value) => _stream?.SetLength(value);
 
