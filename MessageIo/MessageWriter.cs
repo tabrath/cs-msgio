@@ -11,12 +11,12 @@ namespace MessageIo
 {
     public class MessageWriter : IDisposable
     {
-        private readonly Stream _stream;
-        private readonly bool _leaveOpen;
-        private readonly LengthPrefixStyle _lps;
-        private readonly Endianess _endianess;
-        private readonly Binary.EndianCodec _codec;
-        private readonly SemaphoreSlim _semaphore;
+        protected readonly Stream _stream;
+        protected readonly bool _leaveOpen;
+        protected readonly LengthPrefixStyle _lps;
+        protected readonly Endianess _endianess;
+        protected readonly Binary.EndianCodec _codec;
+        protected readonly SemaphoreSlim _semaphore;
 
         public MessageWriter(Stream stream, bool leaveOpen = false, LengthPrefixStyle lps = LengthPrefixStyle.Varint,
             Endianess endianess = Endianess.Big)
@@ -42,19 +42,19 @@ namespace MessageIo
             }
         }
 
-        public Task<int> WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public virtual Task<int> WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             return WriteMessageAsync(buffer.Skip(offset).Take(count).ToArray(), cancellationToken)
                 .ContinueWith(_ => count, cancellationToken);
         }
 
-        public int Write(byte[] buffer, int offset, int count)
+        public virtual int Write(byte[] buffer, int offset, int count)
         {
             WriteMessage(buffer.Skip(offset).Take(count).ToArray());
             return count;
         }
 
-        public async Task WriteMessageAsync(byte[] message, CancellationToken cancellationToken)
+        public virtual async Task WriteMessageAsync(byte[] message, CancellationToken cancellationToken)
         {
             try
             {
@@ -68,7 +68,7 @@ namespace MessageIo
             }
         }
 
-        public void WriteMessage(byte[] message)
+        public virtual void WriteMessage(byte[] message)
         {
             try
             {
@@ -83,7 +83,7 @@ namespace MessageIo
             }
         }
 
-        private Task WriteMessageLengthAsync(int length, CancellationToken cancellationToken)
+        protected Task WriteMessageLengthAsync(int length, CancellationToken cancellationToken)
         {
             byte[] bytes;
             switch (_lps)
@@ -117,12 +117,14 @@ namespace MessageIo
             }
         }
 
-        private void WriteMessageLength(int length)
+        protected void WriteMessageLength(int length)
         {
+            byte[] bytes;
             switch (_lps)
             {
                 case LengthPrefixStyle.Int8:
-                    _stream.WriteByte((byte)Convert.ToSByte(length));
+                    bytes = new[] {Convert.ToByte((sbyte)length)};
+                    _stream.Write(bytes, 0, bytes.Length);
                     break;
                 case LengthPrefixStyle.Int16:
                     _codec.Write(_stream, (short) length);
@@ -137,7 +139,8 @@ namespace MessageIo
                     Binary.Varint.Write(_stream, (long) length);
                     break;
                 case LengthPrefixStyle.UInt8:
-                    _stream.WriteByte((byte)length);
+                    bytes = new[] { (byte)length };
+                    _stream.Write(bytes, 0, bytes.Length);
                     break;
                 case LengthPrefixStyle.UInt16:
                     _codec.Write(_stream, (ushort) length);

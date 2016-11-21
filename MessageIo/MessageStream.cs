@@ -25,6 +25,14 @@ namespace MessageIo
             _writer = _stream.CanWrite ? new MessageWriter(_stream, leaveOpen, lps, endianess) : null;
         }
 
+        protected MessageStream(MessageReader reader, MessageWriter writer)
+        {
+            _reader = reader;
+            _writer = writer;
+        }
+
+        public static MessageStream Combine(MessageReader reader, MessageWriter writer) => new MessageStream(reader, writer);
+
         public override void Flush() => _stream?.Flush();
         public override Task FlushAsync(CancellationToken cancellationToken) => _stream?.FlushAsync(cancellationToken);
         public override long Seek(long offset, SeekOrigin origin) => _stream?.Seek(offset, origin) ?? -1;

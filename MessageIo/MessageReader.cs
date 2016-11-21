@@ -11,13 +11,13 @@ namespace MessageIo
 {
     public class MessageReader : IDisposable
     {
-        private readonly Stream _stream;
-        private readonly bool _leaveOpen;
-        private readonly LengthPrefixStyle _lps;
-        private readonly Endianess _endianess;
-        private int _next;
-        private readonly Binary.EndianCodec _codec;
-        private readonly SemaphoreSlim _semaphore;
+        protected readonly Stream _stream;
+        protected readonly bool _leaveOpen;
+        protected readonly LengthPrefixStyle _lps;
+        protected readonly Endianess _endianess;
+        protected int _next;
+        protected readonly Binary.EndianCodec _codec;
+        protected readonly SemaphoreSlim _semaphore;
 
         public MessageReader(Stream stream, bool leaveOpen = false, LengthPrefixStyle lps = LengthPrefixStyle.Varint,
             Endianess endianess = Endianess.Big)
@@ -79,62 +79,47 @@ namespace MessageIo
             if (_next != -1)
                 return _next;
 
-            int length = 0;
-            byte[] bytes;
+            byte[] bytes = new byte[1];
             switch (_lps)
             {
                 case LengthPrefixStyle.Int8:
-                    bytes = new byte[1];
                     await _stream.ReadAsync(bytes, 0, bytes.Length, cancellationToken);
-                    length = Convert.ToSByte(bytes[0]);
-                    break;
+                    return _next = (sbyte)bytes[0];
                 case LengthPrefixStyle.Int16:
-                    length = await _codec.ReadInt16Async(_stream);
-                    break;
+                    return _next = await _codec.ReadInt16Async(_stream);
                 case LengthPrefixStyle.Int32:
-                    length = await _codec.ReadInt32Async(_stream);
-                    break;
+                    return _next = await _codec.ReadInt32Async(_stream);
                 case LengthPrefixStyle.Int64:
-                    length = (int) await _codec.ReadInt64Async(_stream);
-                    break;
+                    return _next = (int) await _codec.ReadInt64Async(_stream);
                 case LengthPrefixStyle.Varint:
-                    length = (int) await Binary.Varint.ReadInt64Async(_stream);
-                    break;
+                    return _next = (int) await Binary.Varint.ReadInt64Async(_stream);
                 case LengthPrefixStyle.UInt8:
-                    bytes = new byte[1];
                     await _stream.ReadAsync(bytes, 0, bytes.Length, cancellationToken);
-                    length = Convert.ToByte(bytes[0]);
-                    break;
+                    return _next = bytes[0];
                 case LengthPrefixStyle.UInt16:
-                    length = await _codec.ReadUInt16Async(_stream);
-                    break;
+                    return _next = await _codec.ReadUInt16Async(_stream);
                 case LengthPrefixStyle.UInt32:
-                    length = (int) await _codec.ReadUInt32Async(_stream);
-                    break;
+                    return _next = (int) await _codec.ReadUInt32Async(_stream);
                 case LengthPrefixStyle.UInt64:
-                    length = (int) await _codec.ReadUInt64Async(_stream);
-                    break;
+                    return _next = (int) await _codec.ReadUInt64Async(_stream);
                 case LengthPrefixStyle.UVarint:
-                    length = (int) await Binary.Varint.ReadUInt64Async(_stream);
-                    break;
+                    return _next = (int) await Binary.Varint.ReadUInt64Async(_stream);
                 default:
                     throw new ArgumentOutOfRangeException();
             }
-
-            _next = length;
-
-            return length;
         }
 
-        private int NextMessageLength()
+        protected int NextMessageLength()
         {
             if (_next != -1)
                 return _next;
 
+            var bytes = new byte[1];
             switch (_lps)
             {
                 case LengthPrefixStyle.Int8:
-                    return _next = Convert.ToSByte(_stream.ReadByte());
+                    _stream.Read(bytes, 0, 1);
+                    return _next = (sbyte) bytes[0];
                 case LengthPrefixStyle.Int16:
                     return _next = _codec.ReadInt16(_stream);
                 case LengthPrefixStyle.Int32:
@@ -146,7 +131,8 @@ namespace MessageIo
                     Binary.Varint.Read(_stream, out proxy);
                     return _next = (int) proxy;
                 case LengthPrefixStyle.UInt8:
-                    return _next = _stream.ReadByte();
+                    _stream.Read(bytes, 0, 1);
+                    return _next = bytes[0];
                 case LengthPrefixStyle.UInt16:
                     return _next = _codec.ReadUInt16(_stream);
                 case LengthPrefixStyle.UInt32:
@@ -162,7 +148,7 @@ namespace MessageIo
             }
         }
 
-        public async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public virtual async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             int result = 0;
             try
@@ -185,7 +171,7 @@ namespace MessageIo
             return result;
         }
 
-        public int Read(byte[] buffer, int offset, int count)
+        public virtual int Read(byte[] buffer, int offset, int count)
         {
             var length = 0;
             try
@@ -208,7 +194,7 @@ namespace MessageIo
             return length;
         }
 
-        public async Task<byte[]> ReadMessageAsync(CancellationToken cancellationToken)
+        public virtual async Task<byte[]> ReadMessageAsync(CancellationToken cancellationToken)
         {
             byte[] buffer = null;
             try
@@ -217,10 +203,15 @@ namespace MessageIo
 
                 var length = await NextMessageLengthAsync(cancellationToken);
                 buffer = new byte[length];
-                var bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken);
+                var offset = 0;
+                while (offset < buffer.Length)
+                {
+                    var bytesRead = await _stream.ReadAsync(buffer, offset, buffer.Length - offset, cancellationToken);
+                    if (bytesRead == 0)
+                        throw new EndOfStreamException();
 
-                if (bytesRead != length)
-                    throw new Exception("Could not read entire message");
+                    offset += bytesRead;
+                }
 
                 _next = -1;
             }
@@ -231,7 +222,7 @@ namespace MessageIo
             return buffer;
         }
 
-        public byte[] ReadMessage()
+        public virtual byte[] ReadMessage()
         {
             byte[] buffer = null;
             try
@@ -240,8 +231,16 @@ namespace MessageIo
                 var length = NextMessageLength();
                 buffer = new byte[length];
 
-                if (_stream.Read(buffer, 0, length) != length)
-                    throw new Exception("Could not read entire message");
+                var offset = 0;
+                while (offset < buffer.Length)
+                {
+                    var bytesRead = _stream.Read(buffer, offset, buffer.Length - offset);
+                    if (bytesRead == 0)
+                        throw new EndOfStreamException();
+
+                    offset += bytesRead;
+
+                }
 
                 _next = -1;
             }

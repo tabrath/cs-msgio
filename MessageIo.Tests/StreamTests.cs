@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -178,6 +180,51 @@ namespace MessageIo.Tests
                 var msg2 = await stream.ReadMessageAsync(CancellationToken.None);
 
                 Assert.That(msg2, Is.EqualTo(msg));
+            }
+        }
+
+        private static void MakeTcpStreamPair(out Stream aStream, out Stream bStream)
+        {
+            var listener = new TcpListener(IPAddress.Loopback, new Random(Environment.TickCount).Next(1024, 8192));
+            listener.Start();
+            var accept = listener.AcceptTcpClientAsync();
+            var a = new TcpClient();
+            a.ExclusiveAddressUse = false;
+            a.NoDelay = true;
+            a.Connect((IPEndPoint) listener.LocalEndpoint);
+            var b = accept.Result;
+            b.NoDelay = true;
+            listener.Stop();
+
+            aStream = a.GetStream();
+            bStream = b.GetStream();
+        }
+
+        [TestCase(LengthPrefixStyle.Int8)]
+        [TestCase(LengthPrefixStyle.UInt8)]
+        [TestCase(LengthPrefixStyle.Int16)]
+        [TestCase(LengthPrefixStyle.UInt16)]
+        [TestCase(LengthPrefixStyle.Int32)]
+        [TestCase(LengthPrefixStyle.UInt32)]
+        [TestCase(LengthPrefixStyle.Int64)]
+        [TestCase(LengthPrefixStyle.UInt64)]
+        [TestCase(LengthPrefixStyle.Varint)]
+        [TestCase(LengthPrefixStyle.UVarint)]
+        public void CombineStreamPair_TestReadWriteMessage(LengthPrefixStyle lps)
+        {
+            Stream a = null, b = null;
+            try
+            {
+                MakeTcpStreamPair(out a, out b);
+                using (var stream = MessageStream.Combine(new MessageReader(a, true, lps), new MessageWriter(b, true, lps)))
+                {
+                    SubtestReadWriteMessage(stream, lps, () => {});
+                }
+            }
+            finally
+            {
+                a?.Dispose();
+                b?.Dispose();
             }
         }
     }
