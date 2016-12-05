@@ -18,6 +18,7 @@ namespace MessageIo
         protected int _next;
         protected readonly Binary.EndianCodec _codec;
         protected readonly SemaphoreSlim _semaphore;
+        protected readonly MessageBuffer _buffer;
 
         public MessageReader(Stream stream, bool leaveOpen = false, LengthPrefixStyle lps = LengthPrefixStyle.Varint,
             Endianess endianess = Endianess.Big)
@@ -29,6 +30,7 @@ namespace MessageIo
             _next = -1;
             _semaphore = new SemaphoreSlim(1, 1);
             _codec = (_lps != LengthPrefixStyle.UVarint && _lps != LengthPrefixStyle.Varint) ? GetCodec() : null;
+            _buffer = new MessageBuffer(4096);
         }
 
         private Binary.EndianCodec GetCodec()
@@ -46,32 +48,28 @@ namespace MessageIo
 
         public async Task<int> ReadNextMessageLengthAsync(CancellationToken cancellationToken)
         {
-            int length = 0;
+            await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await _semaphore.WaitAsync(cancellationToken);
-                length = await NextMessageLengthAsync(cancellationToken);
+                return await NextMessageLengthAsync(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 _semaphore.Release();
             }
-            return length;
         }
 
         public int ReadNextMessageLength()
         {
-            var length = 0;
+            _semaphore.Wait();
             try
             {
-                _semaphore.Wait();
-                length = NextMessageLength();
+                return NextMessageLength();
             }
             finally
             {
                 _semaphore.Release();
             }
-            return length;
         }
 
         private async Task<int> NextMessageLengthAsync(CancellationToken cancellationToken)
@@ -79,33 +77,40 @@ namespace MessageIo
             if (_next != -1)
                 return _next;
 
-            byte[] bytes = new byte[1];
-            switch (_lps)
+            try
             {
-                case LengthPrefixStyle.Int8:
-                    await _stream.ReadAsync(bytes, 0, bytes.Length, cancellationToken);
-                    return _next = (sbyte)bytes[0];
-                case LengthPrefixStyle.Int16:
-                    return _next = await _codec.ReadInt16Async(_stream);
-                case LengthPrefixStyle.Int32:
-                    return _next = await _codec.ReadInt32Async(_stream);
-                case LengthPrefixStyle.Int64:
-                    return _next = (int) await _codec.ReadInt64Async(_stream);
-                case LengthPrefixStyle.Varint:
-                    return _next = (int) await Binary.Varint.ReadInt64Async(_stream);
-                case LengthPrefixStyle.UInt8:
-                    await _stream.ReadAsync(bytes, 0, bytes.Length, cancellationToken);
-                    return _next = bytes[0];
-                case LengthPrefixStyle.UInt16:
-                    return _next = await _codec.ReadUInt16Async(_stream);
-                case LengthPrefixStyle.UInt32:
-                    return _next = (int) await _codec.ReadUInt32Async(_stream);
-                case LengthPrefixStyle.UInt64:
-                    return _next = (int) await _codec.ReadUInt64Async(_stream);
-                case LengthPrefixStyle.UVarint:
-                    return _next = (int) await Binary.Varint.ReadUInt64Async(_stream);
-                default:
-                    throw new ArgumentOutOfRangeException();
+                var bytes = new byte[1];
+                switch (_lps)
+                {
+                    case LengthPrefixStyle.Int8:
+                        await _stream.ReadAsync(bytes, 0, bytes.Length, cancellationToken).ConfigureAwait(false);
+                        return _next = (sbyte) bytes[0];
+                    case LengthPrefixStyle.Int16:
+                        return _next = await _codec.ReadInt16Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.Int32:
+                        return _next = await _codec.ReadInt32Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.Int64:
+                        return _next = (int) await _codec.ReadInt64Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.Varint:
+                        return _next = (int) await Binary.Varint.ReadInt64Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.UInt8:
+                        await _stream.ReadAsync(bytes, 0, bytes.Length, cancellationToken).ConfigureAwait(false);
+                        return _next = bytes[0];
+                    case LengthPrefixStyle.UInt16:
+                        return _next = await _codec.ReadUInt16Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.UInt32:
+                        return _next = (int) await _codec.ReadUInt32Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.UInt64:
+                        return _next = (int) await _codec.ReadUInt64Async(_stream).ConfigureAwait(false);
+                    case LengthPrefixStyle.UVarint:
+                        return _next = (int) await Binary.Varint.ReadUInt64Async(_stream).ConfigureAwait(false);
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            catch
+            {
+                return -1;
             }
         }
 
@@ -114,141 +119,161 @@ namespace MessageIo
             if (_next != -1)
                 return _next;
 
-            var bytes = new byte[1];
-            switch (_lps)
+            try
             {
-                case LengthPrefixStyle.Int8:
-                    _stream.Read(bytes, 0, 1);
-                    return _next = (sbyte) bytes[0];
-                case LengthPrefixStyle.Int16:
-                    return _next = _codec.ReadInt16(_stream);
-                case LengthPrefixStyle.Int32:
-                    return _next = _codec.ReadInt32(_stream);
-                case LengthPrefixStyle.Int64:
-                    return _next = (int) _codec.ReadInt64(_stream);
-                case LengthPrefixStyle.Varint:
-                    long proxy = 0;
-                    Binary.Varint.Read(_stream, out proxy);
-                    return _next = (int) proxy;
-                case LengthPrefixStyle.UInt8:
-                    _stream.Read(bytes, 0, 1);
-                    return _next = bytes[0];
-                case LengthPrefixStyle.UInt16:
-                    return _next = _codec.ReadUInt16(_stream);
-                case LengthPrefixStyle.UInt32:
-                    return _next = (int) _codec.ReadUInt32(_stream);
-                case LengthPrefixStyle.UInt64:
-                    return _next = (int) _codec.ReadUInt64(_stream);
-                case LengthPrefixStyle.UVarint:
-                    ulong uproxy = 0;
-                    Binary.Varint.Read(_stream, out uproxy);
-                    return _next = (int) uproxy;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                var bytes = new byte[1];
+                switch (_lps)
+                {
+                    case LengthPrefixStyle.Int8:
+                        _stream.Read(bytes, 0, 1);
+                        return _next = (sbyte) bytes[0];
+                    case LengthPrefixStyle.Int16:
+                        return _next = _codec.ReadInt16(_stream);
+                    case LengthPrefixStyle.Int32:
+                        return _next = _codec.ReadInt32(_stream);
+                    case LengthPrefixStyle.Int64:
+                        return _next = (int) _codec.ReadInt64(_stream);
+                    case LengthPrefixStyle.Varint:
+                        long proxy = 0;
+                        Binary.Varint.Read(_stream, out proxy);
+                        return _next = (int) proxy;
+                    case LengthPrefixStyle.UInt8:
+                        _stream.Read(bytes, 0, 1);
+                        return _next = bytes[0];
+                    case LengthPrefixStyle.UInt16:
+                        return _next = _codec.ReadUInt16(_stream);
+                    case LengthPrefixStyle.UInt32:
+                        return _next = (int) _codec.ReadUInt32(_stream);
+                    case LengthPrefixStyle.UInt64:
+                        return _next = (int) _codec.ReadUInt64(_stream);
+                    case LengthPrefixStyle.UVarint:
+                        ulong uproxy = 0;
+                        Binary.Varint.Read(_stream, out uproxy);
+                        return _next = (int) uproxy;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+            catch
+            {
+                return -1;
             }
         }
 
         public virtual async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            int result = 0;
-            try
-            {
-                await _semaphore.WaitAsync(cancellationToken);
+            var drained = _buffer.Drain(buffer, offset, count);
+            if (drained == count)
+                return drained;
 
-                var length = await NextMessageLengthAsync(cancellationToken);
+            var msg = await ReadMessageAsync(cancellationToken).ConfigureAwait(false);
+            if (msg.Length == 0)
+                return drained > 0 ? drained : -1;
 
-                if (length > count - offset)
-                    throw new Exception("Buffer is too short");
-
-                result = await _stream.ReadAsync(buffer, offset, length, cancellationToken);
-
-                _next = -1;
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-            return result;
+            _buffer.Fill(msg, 0, msg.Length);
+            return drained + _buffer.Drain(buffer, offset + drained, count - drained);
         }
 
         public virtual int Read(byte[] buffer, int offset, int count)
         {
-            var length = 0;
-            try
-            {
-                _semaphore.Wait();
-                length = NextMessageLength();
+            var drained = _buffer.Drain(buffer, offset, count);
+            if (drained == count)
+                return drained;
 
-                if (length > count - offset)
-                    throw new Exception("Buffer is too short");
+            var msg = ReadMessage();
+            if (msg.Length == 0)
+                return drained > 0 ? drained : -1;
 
-                if (_stream.Read(buffer, offset, length) != length)
-                    throw new Exception("Could not read entire message");
+            _buffer.Fill(msg, 0, msg.Length);
+            return drained + _buffer.Drain(buffer, offset + drained, count - drained);
+        }
 
-                _next = -1;
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-            return length;
+        public virtual int ReadByte()
+        {
+            var buffer = new byte[1];
+            if (_buffer.Drain(buffer, 0, 1) == 1)
+                return buffer[0];
+
+            var msg = ReadMessage();
+            if (msg.Length == 0)
+                return -1;
+
+            _buffer.Fill(msg, 0, msg.Length);
+            return _buffer.Drain(buffer, 0, 1);
         }
 
         public virtual async Task<byte[]> ReadMessageAsync(CancellationToken cancellationToken)
         {
-            byte[] buffer = null;
+            await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                await _semaphore.WaitAsync(cancellationToken);
+                var length = await NextMessageLengthAsync(cancellationToken).ConfigureAwait(false);
+                if (length < 1)
+                    return Array.Empty<byte>();
 
-                var length = await NextMessageLengthAsync(cancellationToken);
-                buffer = new byte[length];
+                byte[] buffer = new byte[length];
+
                 var offset = 0;
                 while (offset < buffer.Length)
                 {
-                    var bytesRead = await _stream.ReadAsync(buffer, offset, buffer.Length - offset, cancellationToken);
-                    if (bytesRead == 0)
-                        throw new EndOfStreamException();
+                    var bytesRead = await _stream.ReadAsync(buffer, offset, buffer.Length - offset, cancellationToken).ConfigureAwait(false);
+                    if (bytesRead <= 0)
+                        break;
 
                     offset += bytesRead;
                 }
 
-                _next = -1;
+                if (offset != length)
+                    throw new Exception("Unable to read whole message.");
+
+                return buffer;
+            }
+            catch (EndOfStreamException)
+            {
+                return Array.Empty<byte>();
             }
             finally
             {
+                _next = -1;
                 _semaphore.Release();
             }
-            return buffer;
         }
 
         public virtual byte[] ReadMessage()
         {
-            byte[] buffer = null;
+            _semaphore.Wait();
             try
             {
-                _semaphore.Wait();
                 var length = NextMessageLength();
-                buffer = new byte[length];
+                if (length < 1)
+                    return Array.Empty<byte>();
+
+                byte[] buffer = new byte[length];
 
                 var offset = 0;
                 while (offset < buffer.Length)
                 {
                     var bytesRead = _stream.Read(buffer, offset, buffer.Length - offset);
-                    if (bytesRead == 0)
-                        throw new EndOfStreamException();
+                    if (bytesRead <= 0)
+                        break;
 
                     offset += bytesRead;
-
                 }
 
-                _next = -1;
+                if (offset != length)
+                    throw new Exception("Unable to read whole message.");
+
+                return buffer;
+            }
+            catch (EndOfStreamException)
+            {
+                return Array.Empty<byte>();
             }
             finally
             {
+                _next = -1;
                 _semaphore.Release();
             }
-            return buffer;
         }
 
         ~MessageReader()
@@ -268,6 +293,7 @@ namespace MessageIo
                 return;
 
             _semaphore?.Dispose();
+            _buffer.Dispose();
 
             if (!_leaveOpen)
                 _stream?.Dispose();

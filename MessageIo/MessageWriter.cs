@@ -42,23 +42,86 @@ namespace MessageIo
             }
         }
 
-        public virtual Task<int> WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public virtual void WriteByte(int b)
         {
-            return WriteMessageAsync(buffer.Skip(offset).Take(count).ToArray(), cancellationToken)
-                .ContinueWith(_ => count, cancellationToken);
+            WriteMessage(new [] { (byte)b });
+        }
+
+        public virtual async Task<int> WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            var max = MaxMessageLength;
+            if (max == 0 || count <= max)
+            {
+                await WriteMessageAsync(buffer.Slice(offset, count), cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                var missing = count;
+                while (missing > 0)
+                {
+                    var msg = buffer.Slice(offset, Math.Min(max, missing));
+                    await WriteMessageAsync(msg, cancellationToken).ConfigureAwait(false);
+                    missing -= msg.Length;
+                    offset += msg.Length;
+                }
+            }
+            return count;
         }
 
         public virtual int Write(byte[] buffer, int offset, int count)
         {
-            WriteMessage(buffer.Skip(offset).Take(count).ToArray());
+            var max = MaxMessageLength;
+            if (max == 0 || count <= max)
+            {
+                WriteMessage(buffer.Slice(offset, count));
+            }
+            else
+            {
+                var missing = count;
+                while (missing > 0)
+                {
+                    var msg = buffer.Slice(offset, Math.Min(max, missing));
+                    WriteMessage(msg);
+                    missing -= msg.Length;
+                    offset += msg.Length;
+                }
+            }
             return count;
+        }
+
+        private int MaxMessageLength
+        {
+            get
+            {
+                switch (_lps)
+                {
+                    case LengthPrefixStyle.Int8:
+                        return sbyte.MaxValue;
+                    case LengthPrefixStyle.Int16:
+                        return short.MaxValue;
+                    case LengthPrefixStyle.Int32:
+                        return int.MaxValue;
+                    case LengthPrefixStyle.Int64:
+                        return int.MaxValue;
+                    case LengthPrefixStyle.UInt8:
+                        return byte.MaxValue;
+                    case LengthPrefixStyle.UInt16:
+                        return ushort.MaxValue;
+                    case LengthPrefixStyle.UInt32:
+                        return int.MaxValue;
+                    case LengthPrefixStyle.UInt64:
+                        return int.MaxValue;
+                    default:
+                        return 0;
+                }
+            }
         }
 
         public virtual async Task WriteMessageAsync(byte[] message, CancellationToken cancellationToken)
         {
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
-                await _semaphore.WaitAsync(cancellationToken);
                 await WriteMessageLengthAsync(message.Length, cancellationToken);
                 await _stream.WriteAsync(message, 0, message.Length, cancellationToken);
             }
@@ -70,10 +133,9 @@ namespace MessageIo
 
         public virtual void WriteMessage(byte[] message)
         {
+            _semaphore.Wait();
             try
             {
-                _semaphore.Wait();
-
                 WriteMessageLength(message.Length);
                 _stream.Write(message, 0, message.Length);
             }
@@ -85,6 +147,9 @@ namespace MessageIo
 
         protected Task WriteMessageLengthAsync(int length, CancellationToken cancellationToken)
         {
+            if (MaxMessageLength > 0 && length > MaxMessageLength)
+                throw new Exception("Length exceeds maximum length prefix size.");
+
             byte[] bytes;
             switch (_lps)
             {
@@ -94,7 +159,7 @@ namespace MessageIo
                 case LengthPrefixStyle.Int16:
                     return _codec.WriteAsync(_stream, (short)length);
                 case LengthPrefixStyle.Int32:
-                    return _codec.WriteAsync(_stream, length);
+                    return _codec.WriteAsync(_stream, (int)length);
                 case LengthPrefixStyle.Int64:
                     return _codec.WriteAsync(_stream, (long)length);
                 case LengthPrefixStyle.Varint:
@@ -119,6 +184,9 @@ namespace MessageIo
 
         protected void WriteMessageLength(int length)
         {
+            if (MaxMessageLength > 0 && length > MaxMessageLength)
+                throw new Exception("Length exceeds maximum length prefix size.");
+
             byte[] bytes;
             switch (_lps)
             {
@@ -130,7 +198,7 @@ namespace MessageIo
                     _codec.Write(_stream, (short) length);
                     break;
                 case LengthPrefixStyle.Int32:
-                    _codec.Write(_stream, length);
+                    _codec.Write(_stream, (int)length);
                     break;
                 case LengthPrefixStyle.Int64:
                     _codec.Write(_stream, (long) length);

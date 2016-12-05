@@ -40,13 +40,13 @@ namespace MessageIo
 
         public override int Read(byte[] buffer, int offset, int count) => _reader?.Read(buffer, offset, count) ?? 0;
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => _reader?.ReadAsync(buffer, offset, count, cancellationToken);
-        public override int ReadByte() => _stream?.ReadByte() ?? -1;
+        public override int ReadByte() => _reader?.ReadByte() ?? -1;
         public byte[] ReadMessage() => _reader?.ReadMessage();
         public Task<byte[]> ReadMessageAsync(CancellationToken cancellationToken)=> _reader?.ReadMessageAsync(cancellationToken);
 
         public override void Write(byte[] buffer, int offset, int count) => _writer?.Write(buffer, offset, count);
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) => _writer?.WriteAsync(buffer, offset, count, cancellationToken);
-        public override void WriteByte(byte value) => _stream?.WriteByte(value);
+        public override void WriteByte(byte value) => _writer?.WriteByte(value);
         public void WriteMessage(byte[] message) => _writer?.WriteMessage(message);
         public Task WriteMessageAsync(byte[] message, CancellationToken cancellationToken) => _writer?.WriteMessageAsync(message, cancellationToken);
 
