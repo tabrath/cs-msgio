@@ -6,7 +6,6 @@
     <title>$title$</title>
     <authors>$author$</authors>
     <owners>$author$</owners>
-    <licenseUrl>https://github.com/tabrath/cs-msgio/LICENSE</licenseUrl>
     <projectUrl>https://github.com/tabrath/cs-msgio</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>$description$</description>

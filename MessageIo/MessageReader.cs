@@ -166,7 +166,7 @@ namespace MessageIo
             if (drained == count)
                 return drained;
 
-            var msg = await ReadMessageAsync(cancellationToken).ConfigureAwait(false);
+            var msg = await ReadNextMessageAsync(cancellationToken).ConfigureAwait(false);
             if (msg.Length == 0)
                 return drained > 0 ? drained : -1;
 
@@ -180,7 +180,7 @@ namespace MessageIo
             if (drained == count)
                 return drained;
 
-            var msg = ReadMessage();
+            var msg = ReadNextMessage();
             if (msg.Length == 0)
                 return drained > 0 ? drained : -1;
 
@@ -194,7 +194,7 @@ namespace MessageIo
             if (_buffer.Drain(buffer, 0, 1) == 1)
                 return buffer[0];
 
-            var msg = ReadMessage();
+            var msg = ReadNextMessage();
             if (msg.Length == 0)
                 return -1;
 
@@ -202,7 +202,9 @@ namespace MessageIo
             return _buffer.Drain(buffer, 0, 1);
         }
 
-        public virtual async Task<byte[]> ReadMessageAsync(CancellationToken cancellationToken)
+        public Task<byte[]> ReadMessageAsync(CancellationToken cancellationToken) => ReadNextMessageAsync(cancellationToken);
+
+        protected virtual async Task<byte[]> ReadNextMessageAsync(CancellationToken cancellationToken)
         {
             await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
@@ -239,7 +241,21 @@ namespace MessageIo
             }
         }
 
-        public virtual byte[] ReadMessage()
+        public byte[] ReadMessage()
+        {
+            var drained = _buffer.DrainMessage();
+            if (drained.Length > 0)
+                return drained;
+
+            var msg = ReadNextMessage();
+            if (msg.Length == 0)
+                return drained;
+
+            _buffer.FillMessage(msg);
+            return drained.Concat(_buffer.DrainMessage()).ToArray();
+        }
+        
+        protected virtual byte[] ReadNextMessage()
         {
             _semaphore.Wait();
             try

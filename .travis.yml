@@ -1,0 +1,14 @@
+language: csharp
+solution: MessageIo.sln
+branches:
+  only:
+    - master
+install:
+  - nuget restore MessageIo/packages.config -PackagesDirectory ./packages
+  - nuget restore MessageIo.Tests/packages.config -PackagesDirectory ./packages
+script:
+  - xbuild /p:Configuration=Release MessageIo.sln
+  - mono ./packages/NUnit.ConsoleRunner.3.5.0/tools/nunit3-console.exe ./MessageIo.Tests/bin/Release/MessageIo.Tests.dll
+cache:
+  - directories:
+    - ./packages
