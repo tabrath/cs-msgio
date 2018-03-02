@@ -40,4 +40,5 @@ TODO
 
 ## License
 
-[MIT](LICENSE) © 2016 Trond Bråthen
+[MIT](LICENSE) © 2017 Trond Bråthen
+

@@ -1,27 +1,25 @@
-﻿using NUnit.Framework;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace MessageIo.Tests
 {
-    [TestFixture]
     public class ReaderWriterTests
     {
-        [TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]
+        [Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]
         public void TestReadWrite(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -58,20 +56,21 @@ namespace MessageIo.Tests
                 var msg2 = new byte[msg.Length];
                 r.Read(msg2, 0, msg2.Length);
 
-                Assert.That(msg2, Is.EqualTo(msg));
+                Assert.Equal(msg, msg2);
             }
         }
 
-        [TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]
+        [Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]
         public void TestReadWriteRandomLengths(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -111,19 +110,20 @@ namespace MessageIo.Tests
                 total += bytesRead;
             }
 
-            Assert.That(result, Is.EqualTo(expected));
+            Assert.Equal(expected, result);
         }
 
-        [TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]
+        [Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]
         public async Task TestReadWriteRandomLengthsAsync(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -164,19 +164,20 @@ namespace MessageIo.Tests
                 total += bytesRead;
             }
 
-            Assert.That(result, Is.EqualTo(expected));
+            Assert.Equal(expected, result);
         }
 
-        [TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]
+        [Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]
         public async Task TestReadWriteAsync(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -209,20 +210,21 @@ namespace MessageIo.Tests
                 var msg2 = new byte[msg.Length];
                 await r.ReadAsync(msg2, 0, msg2.Length, CancellationToken.None);
 
-                Assert.That(msg2, Is.EqualTo(msg));
+                Assert.Equal(msg, msg2);
             }
         }
 
-        [TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]
+        [Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]
         public void TestReadWriteMessage(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -253,20 +255,21 @@ namespace MessageIo.Tests
             {
                 var msg2 = r.ReadMessage();
 
-                Assert.That(msg2, Is.EqualTo(msg));
+                Assert.Equal(msg, msg2);
             }
         }
 
-        /*[TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]*/
+        /*[Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]*/
         public void TestReadWriteMessageMixed(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -309,22 +312,23 @@ namespace MessageIo.Tests
             {
                 var msg2 = r.ReadMessage();
 
-                Assert.That(msg2, Is.EqualTo(msg));
+                Assert.Equal(msg, msg2);
             }
 
-            Assert.That(result, Is.EqualTo(expected));
+            Assert.Equal(expected, result);
         }
 
-        [TestCase(LengthPrefixStyle.Int8)]
-        [TestCase(LengthPrefixStyle.UInt8)]
-        [TestCase(LengthPrefixStyle.Int16)]
-        [TestCase(LengthPrefixStyle.UInt16)]
-        [TestCase(LengthPrefixStyle.Int32)]
-        [TestCase(LengthPrefixStyle.UInt32)]
-        [TestCase(LengthPrefixStyle.Int64)]
-        [TestCase(LengthPrefixStyle.UInt64)]
-        [TestCase(LengthPrefixStyle.Varint)]
-        [TestCase(LengthPrefixStyle.UVarint)]
+        [Theory]
+        [InlineData(LengthPrefixStyle.Int8)]
+        [InlineData(LengthPrefixStyle.UInt8)]
+        [InlineData(LengthPrefixStyle.Int16)]
+        [InlineData(LengthPrefixStyle.UInt16)]
+        [InlineData(LengthPrefixStyle.Int32)]
+        [InlineData(LengthPrefixStyle.UInt32)]
+        [InlineData(LengthPrefixStyle.Int64)]
+        [InlineData(LengthPrefixStyle.UInt64)]
+        [InlineData(LengthPrefixStyle.Varint)]
+        [InlineData(LengthPrefixStyle.UVarint)]
         public async Task TestReadWriteMessageAsync(LengthPrefixStyle lps)
         {
             using (var stream = new MemoryStream())
@@ -356,7 +360,7 @@ namespace MessageIo.Tests
             {
                 var msg2 = await r.ReadMessageAsync(CancellationToken.None);
 
-                Assert.That(msg2, Is.EqualTo(msg));
+                Assert.Equal(msg, msg2);
             }
         }
 
