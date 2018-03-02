@@ -186,12 +186,13 @@ namespace MessageIo.Tests
 
         private static void MakeTcpStreamPair(out Stream aStream, out Stream bStream)
         {
-            var listener = new TcpListener(IPAddress.Loopback, new Random(Environment.TickCount).Next(1024, 8192));
+            var listener = new TcpListener(IPAddress.Parse("127.0.0.1"), new Random(Environment.TickCount).Next(1024, 8192));
+            //listener.ExclusiveAddressUse = false;
             listener.Start();
             var accept = listener.AcceptTcpClientAsync();
             var a = new TcpClient
             {
-                ExclusiveAddressUse = false,
+                //ExclusiveAddressUse = false,
                 NoDelay = true
             };
             var ep = (IPEndPoint) listener.LocalEndpoint;

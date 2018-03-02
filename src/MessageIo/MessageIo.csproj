@@ -1,7 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  
   <PropertyGroup>
-    <TargetFramework>netstandard1.6</TargetFramework>
+    <TargetFrameworks>netstandard1.6;net461</TargetFrameworks>
+    <authors>Trond Arne Bråthen</authors>
+    <owners>Trond Arne Bråthen</owners>
+    <PackageId>MessageIo</PackageId>
+    <PackageLicenseUrl>https://github.com/tabrath/cs-msgio/blob/master/LICENSE</PackageLicenseUrl>
+    <PackageTags>Message Prefix BigEndian LittleEndian Varint</PackageTags>
+    <PackageTargetFallback Condition=" '$(TargetFramework)' == 'net461' ">$(PackageTargetFallback);netstandard;portable-net461+win8</PackageTargetFallback>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/tabrath/cs-msgio</RepositoryUrl>
+    <description>Length prefixed messages over any stream</description>
+    <releaseNotes></releaseNotes>
+    <copyright>Copyright 2017</copyright>
+    <VersionPrefix>1.1.0</VersionPrefix>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <OutputType>Library</OutputType>
   </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineConstants>$(DefineConstants)</DefineConstants>
+  </PropertyGroup>  
+  
   <ItemGroup>
     <PackageReference Include="BinaryEncoding" Version="1.3.4" />
   </ItemGroup>
